@@ -4,12 +4,20 @@ var height;
 var stage;
 var game;
 
+var cursorSprite;
+
 window.onload = function(){
 	var canvas = document.getElementById("stage");
 	width = parseInt(canvas.style.width);
 	height = parseInt(canvas.style.height);
 
 	stage = new createjs.Stage("stage");
+	stage.enableMouseOver();
+
+	stage.on("mouseover", function(evt){
+		cursorSprite.x = evt.stageX;
+		cursorSprite.y = evt.stageY;
+	});
 
 	init();
 }
@@ -48,8 +56,12 @@ function init(){
 		cell.gs.y = x * 8 + y * 8 - cell.height * 8 - (sid & 1 ? 8 : 16);
 	}
 
-//	var cursorSprite = new createjs.Bitmap("assets/grass.png");
-//	stage.addChild(cursorSprite);
+	var cursorSpriteSheet = new createjs.SpriteSheet({
+		images: ["assets/cursor.png"],
+		frames: {width: 8, height: 8},
+	});
+	cursorSprite = new createjs.Sprite(cursorSpriteSheet, 0);
+	stage.addChild(cursorSprite);
 
 	var overlay = new createjs.Container();
 

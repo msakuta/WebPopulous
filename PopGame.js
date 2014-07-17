@@ -99,6 +99,44 @@ PopGame.prototype.update = function(deltaTime){
 	}
 }
 
+PopGame.prototype.levelModify = function(x,y){
+	function clamp(s, ma, mi){
+		return s < mi ? mi : ma < s ? ma : s;
+	}
+	function levelModifyInt(x0, y0, x, y){
+		var ph = this.cellAt(x, y).height;
+		var h0 = this.cellAt(x0, y0).height;
+		var delta = ph - h0;
+	/*	printf("(%d,%d)%d - (%d,%d)%d = %d\n", x, y, *ph, x0, y0, h0, delta);*/
+		var cdelta = clamp(delta, 1, -1);
+		if(cdelta !== delta){
+			ph = h0 + cdelta;
+/*			if(pp){
+				pp->mana -= LEVEL_COST;
+				if(0 <= pp->clays + delta && pp->clays + delta < pp->maxclays) pp->clays += delta;
+			}*/
+			return this.levelModify(x, y);
+		}
+		return 0;
+	}
+
+	var ret = 0;
+	for(var yy = Math.max(y-1, 0); yy <= Math.min(y+1, this.cells[0].length-1); yy++){
+		for(var xx = Math.max(x-1, 0); xx <= Math.min(x+1, this.cells.length-1); xx++){
+			if(xx !== x || yy !== y)
+				ret += levelModifyInt.call(this, x, y, xx, yy);
+		}
+	}
+	for(var yy = Math.max(y-1, 0); yy <= Math.min(y, this.cells[0].length-1); yy++){
+		for(var xx = Math.max(x-1, 0); xx <= Math.min(x, this.cells.length-1); xx++){
+//			if(this.cellAt(xx, yy).flags & (FSWAMP | FBURNED))
+//				TILEAT(pg->map, xx, yy).flags &= ~(FSWAMP | FBURNED | FHOUSE);
+		}
+	}
+//	ForAdjacents(x, y, pg->map->xs-2, pg->map->ys-2, 3 * 2, VUpdateHouse, pg);
+	return ret;
+}
+
 /// Simple random number generator.
 function RandomSequence(seed){
 	this.z = (seed & 0xffffffff) + 0x7fffffff;
@@ -137,6 +175,7 @@ PopGame.prototype.updateInternal = function(){
 				this.cellAt(x-1, y).height = cell.height;
 				this.cellAt(x-1, y-1).height = cell.height;
 				this.cellAt(x, y-1).height = cell.height;
+				this.levelModify(x, y);
 			}
 
 			game.onUpdateCell(cell,x,y);

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>Populous Game Test</title>
+	<meta charset="UTF-8" />
+	<script type="text/javascript" src="xorshift.js"></script>
+	<script type="text/javascript" src="lib/easeljs-0.7.1.min.js"></script>
+	<script type="text/javascript" src="PopGame.js"></script>
+	<script type="text/javascript" src="populous.js"></script>
+</head>
+<body>
+<div id="header">
+	<h1>Populous Game Test</h1>
+</div>
+	<canvas id="stage" width="400px" height="400px" style="width: 400px; height: 400px;"></canvas>
+	Auto Save Content: <input id="autoSaveText" type="text" value=""></input><br>
+	<input type="button" value="get state" onclick="document.getElementById('saveText').value = game.serialize()"></input>
+	<input id="saveText" type="text" value=""></input>
+	<input type="button" value="reset" onclick="reset()"></input>
+<hr>
+Powered by <a href="https://github.com/GoodBoyDigital/pixi.js">PIXI.js</a>
+</body>
+</html>

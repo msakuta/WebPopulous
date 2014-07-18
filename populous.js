@@ -131,11 +131,9 @@ document.onkeydown = function(event){
 		cursorPos[1]++;
 	}
 	else if(event.keyCode == 81){ // 'q'
-		game.cellAt(cursorPos[0], cursorPos[1]).height++;
-		game.levelModify(cursorPos[0], cursorPos[1]);
+		console.log("raised const: " + game.raiseTerrain(cursorPos[0], cursorPos[1], 1));
 	}
 	else if(event.keyCode == 90){ // 'z'
-		game.cellAt(cursorPos[0], cursorPos[1]).height--;
-		game.levelModify(cursorPos[0], cursorPos[1]);
+		console.log("lowered const: " + game.raiseTerrain(cursorPos[0], cursorPos[1], -1));
 	}
 }

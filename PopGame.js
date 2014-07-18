@@ -104,6 +104,20 @@ PopGame.prototype.update = function(deltaTime){
 	}
 }
 
+/// \brief Modifies the terrain
+/// \param delta The amount to raise or lower the terrain. Can be negative for lowering.
+/// \returns Amount of soils removed or added for the terrain modification. Can be negative
+///          for lowering operation.
+PopGame.prototype.raiseTerrain = function(x,y,delta){
+	if(x < 0 || this.xs <= x || y < 0 || this.yx <= y)
+		return 0;
+	var cell = this.cellAt(x, y);
+	if(cell.height + delta < 0) // Clip lowering
+		delta = -cell.height;
+	cell.height += delta;
+	return this.levelModify(x, y) + delta;
+}
+
 PopGame.prototype.levelModify = function(x,y){
 	function clamp(s, ma, mi){
 		return s < mi ? mi : ma < s ? ma : s;
@@ -115,13 +129,14 @@ PopGame.prototype.levelModify = function(x,y){
 	/*	printf("(%d,%d)%d - (%d,%d)%d = %d\n", x, y, *ph, x0, y0, h0, delta);*/
 		var cdelta = clamp(delta, 1, -1);
 		if(cdelta !== delta){
+			var rdelta = (h0 + cdelta) - c.height;
 			c.height = h0 + cdelta;
 			this.levelInvokes++;
 /*			if(pp){
 				pp->mana -= LEVEL_COST;
 				if(0 <= pp->clays + delta && pp->clays + delta < pp->maxclays) pp->clays += delta;
 			}*/
-			return this.levelModify(x, y);
+			return this.levelModify(x, y) + rdelta;
 		}
 		return 0;
 	}
@@ -173,7 +188,6 @@ function smoothNoise(i){
 
 PopGame.prototype.updateInternal = function(){
 	var creeksx = 0, creeksy = 0;
-	this.levelInvokes = 0;
 	for(var x = 0; x < this.xs; x++){
 		for(var y = 0; y < this.ys; y++){
 			var cell = this.cellAt(x, y);
@@ -181,8 +195,5 @@ PopGame.prototype.updateInternal = function(){
 			game.onUpdateCell(cell,x,y);
 		}
 	}
-	
-	console.log("creeks: " + creeksx + ", " + creeksy + ", " + this.levelInvokes);
-
 }
 

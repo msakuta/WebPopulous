@@ -3,6 +3,7 @@ var width;
 var height;
 var stage;
 var game;
+var cursorPos = [0, 0];
 
 var cursorSprite;
 
@@ -25,7 +26,14 @@ window.onload = function(){
 var groundBaseTexture;
 
 function init(){
-	game = new PopGame(width / 32, height / 32);
+	function calcPos(x,y){
+		var cell = game.cellAt(x, y);
+		var sid = game.slopeID(x, y);
+		return [width / 2 - 8 + x * 16 - y * 16,
+			x * 8 + y * 8 - cell.height * 8 - (sid & 1 ? 8 : 16)];
+	}
+
+	game = new PopGame(20, 20);
 
 	groundBaseTexture = new createjs.SpriteSheet({
 		images: ["assets/grass.png"],
@@ -52,8 +60,9 @@ function init(){
 		}
 		var sid = this.slopeID(x, y);
 		cell.gs.gotoAndStop(/*this.isFlat(x, y) ? 0 : */sid);
-		cell.gs.x = width / 2 - 8 + x * 16 - y * 16;
-		cell.gs.y = x * 8 + y * 8 - cell.height * 8 - (sid & 1 ? 8 : 16);
+		var pos = calcPos(x, y);
+		cell.gs.x = pos[0];
+		cell.gs.y = pos[1];
 	}
 
 	var cursorSpriteSheet = new createjs.SpriteSheet({
@@ -80,6 +89,10 @@ function init(){
 		lastTime = timestamp;
 
 		game.update(deltaTime);
+
+		var pos = calcPos(cursorPos[0], cursorPos[1]);
+		cursorSprite.x = pos[0];
+		cursorSprite.y = pos[1];
 
 		stage.update();
 

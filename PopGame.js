@@ -4,7 +4,7 @@ function PopGame(xs,ys){
 	this.ys = ys;
 	this.rng = new Xor128();
 
-	this.cells = [];
+	this.cells = Array(xs * ys);
 
 	this.workingPower = 100;
 	this.cash = 100;
@@ -27,7 +27,6 @@ PopGame.prototype.init = function(){
 //	else
 	{
 		for(var x = 0; x < this.xs; x++){
-			var row = [];
 			for(var y = 0; y < this.ys; y++){
 				var vx = x - 5;
 				var vy = y - 5;
@@ -36,17 +35,16 @@ PopGame.prototype.init = function(){
 
 				this.onUpdateCell(cell,x,y);
 
-				row.push(cell);
+				this.cells[x * this.ys + y] = cell;
 			}
-			this.cells.push(row);
 		}
 	}
 }
 
 PopGame.prototype.cellAt = function(x,y){
-	if(x < 0 || this.cells.length <= x || y < 0 || this.cells[x].length <= y)
+	if(x < 0 || this.xs <= x || y < 0 || this.ys <= y || this.cells.length <= x * this.ys + y)
 		return new PopGame.Cell(0);
-	return this.cells[x][y];
+	return this.cells[x * this.ys + y];
 }
 
 PopGame.prototype.isFlat = function(x,y){
@@ -59,8 +57,15 @@ PopGame.prototype.isFlat = function(x,y){
 		&& cu && cu.height === c.height /*&& cd && cd.height === c.height*/;
 }
 
+/* Bit index
+     -> x
+ |  0---1
+ V  |   |
+ y  2---3
+
+*/
 PopGame.prototype.slopeID = function(x,y){
-	if(x < 0 || this.cells.length <= x || y < 0 || this.cells[x].length <= y){
+	if(x < 0 || this.xs <= x || y < 0 || this.ys <= y){
 //		console.log("ob: %d, %d [%d, %d]\n", x, y, this.cells.length-1, this.cells[0].length-1);
 		return 0;
 	}
@@ -104,13 +109,14 @@ PopGame.prototype.levelModify = function(x,y){
 		return s < mi ? mi : ma < s ? ma : s;
 	}
 	function levelModifyInt(x0, y0, x, y){
-		var ph = this.cellAt(x, y).height;
+		var c = this.cellAt(x, y);
 		var h0 = this.cellAt(x0, y0).height;
-		var delta = ph - h0;
+		var delta = c.height - h0;
 	/*	printf("(%d,%d)%d - (%d,%d)%d = %d\n", x, y, *ph, x0, y0, h0, delta);*/
 		var cdelta = clamp(delta, 1, -1);
 		if(cdelta !== delta){
-			ph = h0 + cdelta;
+			c.height = h0 + cdelta;
+			this.levelInvokes++;
 /*			if(pp){
 				pp->mana -= LEVEL_COST;
 				if(0 <= pp->clays + delta && pp->clays + delta < pp->maxclays) pp->clays += delta;
@@ -121,14 +127,14 @@ PopGame.prototype.levelModify = function(x,y){
 	}
 
 	var ret = 0;
-	for(var yy = Math.max(y-1, 0); yy <= Math.min(y+1, this.cells[0].length-1); yy++){
-		for(var xx = Math.max(x-1, 0); xx <= Math.min(x+1, this.cells.length-1); xx++){
+	for(var yy = Math.max(y-1, 0); yy <= Math.min(y+1, this.ys-1); yy++){
+		for(var xx = Math.max(x-1, 0); xx <= Math.min(x+1, this.xs-1); xx++){
 			if(xx !== x || yy !== y)
 				ret += levelModifyInt.call(this, x, y, xx, yy);
 		}
 	}
-	for(var yy = Math.max(y-1, 0); yy <= Math.min(y, this.cells[0].length-1); yy++){
-		for(var xx = Math.max(x-1, 0); xx <= Math.min(x, this.cells.length-1); xx++){
+	for(var yy = Math.max(y-1, 0); yy <= Math.min(y, this.ys-1); yy++){
+		for(var xx = Math.max(x-1, 0); xx <= Math.min(x, this.xs-1); xx++){
 //			if(this.cellAt(xx, yy).flags & (FSWAMP | FBURNED))
 //				TILEAT(pg->map, xx, yy).flags &= ~(FSWAMP | FBURNED | FHOUSE);
 		}
@@ -166,21 +172,30 @@ function smoothNoise(i){
 }
 
 PopGame.prototype.updateInternal = function(){
-	for(var x = 0; x < this.cells.length; x++){
-		for(var y = 0; y < this.cells[x].length; y++){
-			var cell = this.cells[x][y];
+	var creeksx = 0, creeksy = 0;
+	this.levelInvokes = 0;
+	for(var x = 0; x < this.xs; x++){
+		for(var y = 0; y < this.ys; y++){
+			var cell = this.cellAt(x, y);
 			
-			if(x % 2 == 0 && y % 2 == 0 && 10 < x){
+			if(2 < x && x % 2 == 0 && 2 < y && y % 2 == 0 && 10 < x){
 				cell.height = this.rng.nexti() % 2;
-				this.cellAt(x-1, y).height = cell.height;
-				this.cellAt(x-1, y-1).height = cell.height;
+//				this.cellAt(x-1, y).height = cell.height;
+//				this.cellAt(x-1, y-1).height = cell.height;
 				this.cellAt(x, y-1).height = cell.height;
 				this.levelModify(x, y);
 			}
+			
+			if(x + 1 < this.xs && 1 < Math.abs(cell.height - this.cellAt(x + 1, y)))
+				creeksx++;
+			if(y + 1 < this.ys && 1 < Math.abs(cell.height - this.cellAt(x, y + 1)))
+				creeksy++;
 
 			game.onUpdateCell(cell,x,y);
 		}
 	}
+	
+	console.log("creeks: " + creeksx + ", " + creeksy + ", " + this.levelInvokes);
 
 }
 

@@ -6,12 +6,9 @@ function PopGame(xs,ys){
 
 	this.cells = Array(xs * ys);
 
-	this.workingPower = 100;
-	this.cash = 100;
-	this.weather = 0;
+	this.pause = false;
 	this.time = 0;
 	this.frameCount = 0;
-	this.autosave_frame = 0;
 }
 
 PopGame.Cell = function(height){
@@ -92,6 +89,8 @@ PopGame.prototype.slopeID = function(x,y){
 PopGame.prototype.onUpdateCell = function(cell,x,y){}
 
 PopGame.prototype.update = function(deltaTime){
+	if(this.pause)
+		return;
 	var frameTime = 100; // Frame time interval in milliseconds
 	this.time += deltaTime;
 
@@ -101,6 +100,7 @@ PopGame.prototype.update = function(deltaTime){
 		this.updateInternal();
 
 		this.time -= frameTime;
+		this.frameCount++;
 	}
 }
 
@@ -177,19 +177,6 @@ PopGame.prototype.updateInternal = function(){
 	for(var x = 0; x < this.xs; x++){
 		for(var y = 0; y < this.ys; y++){
 			var cell = this.cellAt(x, y);
-			
-			if(2 < x && x % 2 == 0 && 2 < y && y % 2 == 0 && 10 < x){
-				cell.height = this.rng.nexti() % 2;
-//				this.cellAt(x-1, y).height = cell.height;
-//				this.cellAt(x-1, y-1).height = cell.height;
-				this.cellAt(x, y-1).height = cell.height;
-				this.levelModify(x, y);
-			}
-			
-			if(x + 1 < this.xs && 1 < Math.abs(cell.height - this.cellAt(x + 1, y)))
-				creeksx++;
-			if(y + 1 < this.ys && 1 < Math.abs(cell.height - this.cellAt(x, y + 1)))
-				creeksy++;
 
 			game.onUpdateCell(cell,x,y);
 		}

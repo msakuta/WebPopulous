@@ -28,16 +28,15 @@ var groundBaseTexture;
 function init(){
 	function calcPos(x,y){
 		var cell = game.cellAt(x, y);
-		var sid = game.slopeID(x, y);
-		return [width / 2 - 8 + x * 16 - y * 16,
-			x * 8 + y * 8 - cell.height * 8 - (sid & 1 ? 8 : 16)];
+		return [width / 2 + x * 16 - y * 16,
+			height - 16 * 20 + x * 8 + y * 8 - cell.height * 8];
 	}
 
 	game = new PopGame(20, 20);
 
 	groundBaseTexture = new createjs.SpriteSheet({
 		images: ["assets/grass.png"],
-		frames: {width: 32, height: 32},
+		frames: {width: 32, height: 32, regX: 16, regY: 16},
 	});
 
 	var groundTexture = new createjs.Sprite(groundBaseTexture, 0);
@@ -62,12 +61,12 @@ function init(){
 		cell.gs.gotoAndStop(/*this.isFlat(x, y) ? 0 : */sid);
 		var pos = calcPos(x, y);
 		cell.gs.x = pos[0];
-		cell.gs.y = pos[1];
+		cell.gs.y = pos[1] - (sid & 1 ? 8 : 16);
 	}
 
 	var cursorSpriteSheet = new createjs.SpriteSheet({
 		images: ["assets/cursor.png"],
-		frames: {width: 8, height: 8},
+		frames: {width: 8, height: 8, regX: 4, regY: 4},
 	});
 	cursorSprite = new createjs.Sprite(cursorSpriteSheet, 0);
 	stage.addChild(cursorSprite);
@@ -92,7 +91,9 @@ function init(){
 
 		var pos = calcPos(cursorPos[0], cursorPos[1]);
 		cursorSprite.x = pos[0];
-		cursorSprite.y = pos[1];
+		cursorSprite.y = pos[1] - 16;
+		document.getElementById("poslabel").value = "" + cursorPos[0] + ", " + cursorPos[1]
+			+ ", " + pos[0] + ", " + pos[1] + ", " + game.cellAt(cursorPos[0], cursorPos[1]).height;
 
 		stage.update();
 
@@ -110,5 +111,31 @@ function reset(){
 			stage.removeChild(stage.getChildAt(0));
 
 		init();
+	}
+}
+
+document.onkeydown = function(event){
+	if(event.keyCode == 80){
+		game.pause = !game.pause;
+	}
+	else if(event.keyCode == 65){ // 'a'
+		cursorPos[0]--;
+	}
+	else if(event.keyCode == 68){ // 'd'
+		cursorPos[0]++;
+	}
+	else if(event.keyCode == 87){ // 'w'
+		cursorPos[1]--;
+	}
+	else if(event.keyCode == 83){ // 's'
+		cursorPos[1]++;
+	}
+	else if(event.keyCode == 81){ // 'q'
+		game.cellAt(cursorPos[0], cursorPos[1]).height++;
+		game.levelModify(cursorPos[0], cursorPos[1]);
+	}
+	else if(event.keyCode == 90){ // 'z'
+		game.cellAt(cursorPos[0], cursorPos[1]).height--;
+		game.levelModify(cursorPos[0], cursorPos[1]);
 	}
 }

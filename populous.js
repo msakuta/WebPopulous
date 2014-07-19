@@ -69,20 +69,30 @@ function init(){
 			cursorPos[0] = evt.currentTarget.gamex + vporg[0];
 			cursorPos[1] = evt.currentTarget.gamey + vporg[1];
 		});
-		cell.on("mousedown", function(evt){
-			cursorPos[0] = evt.currentTarget.gamex + vporg[0];
-			cursorPos[1] = evt.currentTarget.gamey + vporg[1];
-			var delta = evt.nativeEvent.button === 2 ? -1 : 1;
-			console.log("raised cost: " + game.raiseTerrain(cursorPos[0], cursorPos[1], delta));
-		});
 		terrain.addChild(cell);
 	}
+	stage.on("mousedown", function(evt){
+		var delta = evt.nativeEvent.button === 2 ? -1 : 1;
+		console.log("raised cost: " + game.raiseTerrain(cursorPos[0], cursorPos[1], delta));
+	});
 	stage.addChild(terrain);
 
 	// Placeholder bitmap for procedurally generated minimap
 	var minimap = new createjs.Bitmap();
 	minimap.x = 20;
 	minimap.y = 20;
+	function minimapMove(evt){
+		function clamp(s, ma, mi){
+			return s < mi ? mi : ma < s ? ma : s;
+		}
+		vporg[0] = Math.floor(clamp(evt.stageX - minimap.x - vpw / 2, game.xs - vpw, 0));
+		vporg[1] = Math.floor(clamp(evt.stageY - minimap.y - vph / 2, game.ys - vph, 0));
+		cursorPos[0] = clamp(cursorPos[0], vporg[0] + vpw, vporg[0]);
+		cursorPos[1] = clamp(cursorPos[1], vporg[1] + vph, vporg[1]);
+		evt.stopPropagation();
+	}
+	minimap.on("mousedown", minimapMove);
+	minimap.on("pressmove", minimapMove);
 	stage.addChild(minimap);
 
 	// Viewport indicator

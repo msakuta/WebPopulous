@@ -13,6 +13,23 @@ var cursorSprite;
 var vporg = [0, 0];
 var vpw = 20, vph = 20; // Viewport sizes
 
+function vprect(){
+	function addMethod(s, n, m){
+		s.prototype[n] = m;
+		return s;
+	}
+	function _Rect(x0,y0,x1,y1){
+		this.x0 = x0;
+		this.y0 = y0;
+		this.x1 = x1;
+		this.y1 = y1;
+	}
+	_Rect.prototype.intersects = function(x,y){
+		return this.x0 <= x && x < this.x1 && this.y0 <= y && y < this.y1;
+	}
+	return new _Rect(vporg[0], vporg[1], vporg[0] + vpw, vporg[1] + vph);
+}
+
 window.onload = function(){
 	canvas = document.getElementById("stage");
 	canvas.oncontextmenu = function(){return false;};
@@ -32,10 +49,11 @@ window.onload = function(){
 }
 
 var groundBaseTexture;
+var manTexture;
 
 function init(){
 	function calcPos(x,y){
-		var cell = game.cellAt(x + vporg[0], y + vporg[1]);
+		var cell = game.cellAt(Math.floor(x + vporg[0]), Math.floor(y + vporg[1]));
 		return [width / 2 + x * 16 - y * 16,
 			height - 16 * 20 + x * 8 + y * 8 - cell.height * 8];
 	}
@@ -46,6 +64,17 @@ function init(){
 		images: ["assets/grass.png"],
 		frames: {width: 32, height: 32, regX: 16, regY: 16},
 		animations: {ocean: [15,18,"ocean",0.1]},
+	});
+
+	manTexture = new createjs.SpriteSheet({
+		images: ["assets/man.png"],
+		frames: {width: 32, height: 32, regX: 16, regY: 48},
+		animations: {
+			right: [2,3,"right",0.5],
+			stand: [0],
+			forward: [6,7,"forward",0.5],
+			back: [10,11,"back",0.5]
+		},
 	});
 
 	var groundTexture = new createjs.Sprite(groundBaseTexture, 0);
@@ -103,8 +132,13 @@ function init(){
 	minimapVP.y = 20;
 	stage.addChild(minimapVP);
 
+	var unitContainer = new createjs.Container();
+	stage.addChild(unitContainer);
+
 	game.onUpdateCell = function(cell,x,y){
 	}
+
+//	game.onUpdateUnit = {};
 
 	var cursorSpriteSheet = new createjs.SpriteSheet({
 		images: ["assets/cursor.png"],
@@ -179,6 +213,23 @@ function init(){
 		cursorSprite.y = pos[1] - 16;
 		document.getElementById("poslabel").value = "" + cursorPos[0] + ", " + cursorPos[1]
 			+ ", " + pos[0] + ", " + pos[1] + ", " + game.cellAt(cursorPos[0], cursorPos[1]).height;
+
+		for(var i = 0; i < game.units.length; i++){
+			var unit = game.units[i];
+			if(!vprect().intersects(unit.x, unit.y)){
+				if(unit.graphic)
+					unit.graphic.visible = false;
+				continue;
+			}
+			if(!unit.graphic){
+				unit.graphic = new createjs.Sprite(manTexture, 0);
+				unitContainer.addChild(unit.graphic);
+			}
+			var pos = calcPos(unit.x - vporg[0], unit.y - vporg[1]);
+			unit.graphic.x = pos[0];
+			unit.graphic.y = pos[1];
+			unit.graphic.visible = true;
+		}
 
 		minimapVP.x = 20 + vporg[0];
 		minimapVP.y = 20 + vporg[1];

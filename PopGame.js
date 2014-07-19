@@ -6,6 +6,8 @@ function PopGame(xs,ys){
 
 	this.cells = Array(xs * ys);
 
+	this.units = [new PopGame.Unit(this,4,5)];
+
 	this.pause = false;
 	this.time = 0;
 	this.frameCount = 0;
@@ -15,6 +17,16 @@ PopGame.Cell = function(height){
 	this.height = height;
 }
 
+PopGame.Unit = function(game,x,y){
+	this.game = game;
+	this.x = x;
+	this.y = y;
+}
+
+PopGame.Unit.prototype.update = function(dt){
+	this.x += dt / 1000. * (this.game.rng.next() - 0.5);
+	this.y += dt / 1000. * (this.game.rng.next() - 0.5);
+}
 
 
 PopGame.prototype.init = function(){
@@ -88,6 +100,8 @@ PopGame.prototype.slopeID = function(x,y){
 
 PopGame.prototype.onUpdateCell = function(cell,x,y){}
 
+PopGame.prototype.onUpdateUnit = function(unit){}
+
 PopGame.prototype.update = function(deltaTime){
 	if(this.pause)
 		return;
@@ -97,7 +111,7 @@ PopGame.prototype.update = function(deltaTime){
 	// Repeat the frame procedure in constant interval.
 	while(frameTime < this.time){
 
-		this.updateInternal();
+		this.updateInternal(deltaTime);
 
 		this.time -= frameTime;
 		this.frameCount++;
@@ -186,14 +200,18 @@ function smoothNoise(i){
 	return sum;
 }
 
-PopGame.prototype.updateInternal = function(){
-	var creeksx = 0, creeksy = 0;
+PopGame.prototype.updateInternal = function(dt){
 	for(var x = 0; x < this.xs; x++){
 		for(var y = 0; y < this.ys; y++){
 			var cell = this.cellAt(x, y);
 
-			game.onUpdateCell(cell,x,y);
+			this.onUpdateCell(cell,x,y);
 		}
+	}
+
+	for(var i = 0; i < this.units.length; i++){
+		this.units[i].update(dt);
+		this.onUpdateUnit(this.units[i]);
 	}
 }
 

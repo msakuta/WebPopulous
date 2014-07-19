@@ -1,5 +1,6 @@
 
 var canvas;
+var minimapCanvas;
 var width;
 var height;
 var stage;
@@ -14,6 +15,7 @@ var vpw = 20, vph = 20; // Viewport sizes
 
 window.onload = function(){
 	canvas = document.getElementById("stage");
+	minimapCanvas = document.getElementById("minimap");
 	width = parseInt(canvas.style.width);
 	height = parseInt(canvas.style.height);
 
@@ -64,9 +66,8 @@ function init(){
 	}
 	stage.addChild(terrain);
 
-	// Plainly filled minimap
-	var minimap = new createjs.Shape();
-	minimap.graphics.beginFill("#00ff00").drawRect(0, 0, game.xs, game.ys);
+	// Placeholder bitmap for procedurally generated minimap
+	var minimap = new createjs.Bitmap();
 	minimap.x = 20;
 	minimap.y = 20;
 	stage.addChild(minimap);
@@ -77,18 +78,6 @@ function init(){
 	minimapVP.x = 20;
 	minimapVP.y = 20;
 	stage.addChild(minimapVP);
-
-	// Having rectangle graphics for every cell in the game is so slow!
-/*	var mmcells = Array(game.xs * game.ys);
-	var minimap = new createjs.Container();
-	for(var x = 0; x < game.xs/2; x++) for(var y = 0; y < game.ys/2; y++){
-		var cell = mmcells[x * game.ys + y] = new createjs.Shape();
-		cell.x = x + 20;
-		cell.y = y + 20;
-		cell.graphics.beginFill("#00ff00").drawRect(0, 0, 1, 1);
-		minimap.addChild(cell);
-	}
-	stage.addChild(minimap);*/
 
 	game.onUpdateCell = function(cell,x,y){
 	}
@@ -107,6 +96,35 @@ function init(){
 
 	// Variable to remember the last time of animation frame.
 	var lastTime = null;
+
+	var frameCount = 0;
+
+	function paintMinimap(y0,ys){
+		var context = minimapCanvas.getContext("2d");
+		var image = context.getImageData(0, y0, game.xs, ys);
+
+		var pixels = game.xs * game.ys;
+		var imageData = image.data; // here we detach the pixels array from DOM
+		var land = [0, 127, 0],
+		    left = [0, 159, 0], right = [0, 91, 0], up = [0, 191, 0], down = [0, 63, 0];
+		var cols = [
+			land, down, left, down,
+			right, down, right, down,
+			up, left, up, left,
+			up, right, up, land
+		];
+		for(var y = y0; y < y0 + ys; y++) for(var x = 0; x < game.xs; x++){
+			var pixels = (y - y0) * game.xs + x;
+			var sid = game.slopeID(x, y);
+			var col = cols[sid];
+			imageData[4*pixels+0] = col[0]; // Red value
+			imageData[4*pixels+1] = col[1]; // Green value
+			imageData[4*pixels+2] = col[2]; // Blue value
+			imageData[4*pixels+3] = 255; // Alpha value
+		}
+//		image.data = imageData; // And here we attache it back (not needed cf. update)
+		context.putImageData(image, 0, y0);
+	}
 
 //	createjs.Ticker.addEventListener("tick", animate);
 	function animate(timestamp) {
@@ -138,21 +156,21 @@ function init(){
 		stage.update();
 
 		// Drawing minimap pixels by pixel is so slow
-/*		var context = canvas.getContext("2d");
-		var image = context.getImageData(20, 20, game.xs, game.ys);
-
-		var pixels = game.xs * game.ys;
-		var imageData = image.data; // here we detach the pixels array from DOM
-		for(var x = 0; x < game.xs; x++) for(var y = 0; y < game.ys; y++){
-			var pixels = x * game.ys + y;
-			var sid = game.slopeID(x, y);
-		   imageData[4*pixels+0] = 0; // Red value
-		   imageData[4*pixels+1] = sid & 1 ? 127 : 255; // Green value
-		   imageData[4*pixels+2] = 0; // Blue value
-		   imageData[4*pixels+3] = 255; // Alpha value
+		if(frameCount === 0){
+			paintMinimap(0, game.ys);
 		}
-		image.data = imageData; // And here we attache it back (not needed cf. update)
-		context.putImageData(image, 20, 20);*/
+		else{
+			var y = frameCount % game.xs;
+			paintMinimap(y, 1);
+		}
+
+		if(frameCount % game.ys === 0){
+			var image = new Image();
+			image.src = minimapCanvas.toDataURL("image/png");
+//			console.log(image.src);
+			image.onload = function(){ minimap.image = image };
+		}
+		frameCount++;
 
 		requestAnimationFrame(animate);
 	}

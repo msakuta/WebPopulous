@@ -15,6 +15,7 @@ var vpw = 20, vph = 20; // Viewport sizes
 
 window.onload = function(){
 	canvas = document.getElementById("stage");
+	canvas.oncontextmenu = function(){return false;};
 	minimapCanvas = document.getElementById("minimap");
 	width = parseInt(canvas.style.width);
 	height = parseInt(canvas.style.height);
@@ -62,6 +63,18 @@ function init(){
 		var pos = calcPos(x, y);
 		cell.x = pos[0];
 		cell.y = pos[1];
+		cell.gamex = x; // Remember its position for events
+		cell.gamey = y;
+		cell.on("mouseover", function(evt){
+			cursorPos[0] = evt.currentTarget.gamex + vporg[0];
+			cursorPos[1] = evt.currentTarget.gamey + vporg[1];
+		});
+		cell.on("mousedown", function(evt){
+			cursorPos[0] = evt.currentTarget.gamex + vporg[0];
+			cursorPos[1] = evt.currentTarget.gamey + vporg[1];
+			var delta = evt.nativeEvent.button === 2 ? -1 : 1;
+			console.log("raised cost: " + game.raiseTerrain(cursorPos[0], cursorPos[1], delta));
+		});
 		terrain.addChild(cell);
 	}
 	stage.addChild(terrain);

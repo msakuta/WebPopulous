@@ -1,4 +1,9 @@
 
+/// Utility function
+function clamp(s, ma, mi){
+	return s < mi ? mi : ma < s ? ma : s;
+}
+
 function PopGame(xs,ys){
 	this.xs = xs;
 	this.ys = ys;
@@ -17,8 +22,26 @@ PopGame.Cell = function(height){
 	this.height = height;
 }
 
-PopGame.Unit = function(game,x,y){
+PopGame.Cell.prototype.update = function(game,x,y,dt){
+	if(this.type === "house"){
+		this.amount = clamp(this.amount * (1. + dt / 100000), this.getMaxAmount(), 0);
+		if(this.getMaxAmount() / 2. < this.amount){
+			game.units.push(new PopGame.Unit(game, x, y, this.amount / 2.));
+			this.amount /= 2.;
+		}
+	}
+}
+
+PopGame.Cell.prototype.getGrowth = function(){
+}
+
+PopGame.Cell.prototype.getMaxAmount = function(){
+	return 1000;
+}
+
+PopGame.Unit = function(game,x,y,health=100){
 	this.game = game;
+	this.health = health;
 	this.x = x;
 	this.y = y;
 }
@@ -26,6 +49,26 @@ PopGame.Unit = function(game,x,y){
 PopGame.Unit.prototype.update = function(dt){
 	this.x += dt / 1000. * (this.game.rng.next() - 0.5);
 	this.y += dt / 1000. * (this.game.rng.next() - 0.5);
+
+	// environment damage
+	var v = this.health < 500 ? 5 : this.health / 100;
+	this.health -= v / 16 * dt / 1000;
+	if(this.health <= 0){
+//		pu->active = 0;
+//		pg->pl[pu->team].starveds++;
+//		g_logdata.players[pu->team].starveds++;
+		return false;
+	}
+
+	var ix = Math.floor(this.x), iy = Math.floor(this.y);
+	var cell = this.game.cellAt(ix, iy);
+	if(this.game.slopeID(ix, iy) === 0 && !cell.type){
+		cell.type = "house";
+		cell.amount = this.health;
+		this.game.updateHouse(ix, iy);
+		return false;
+	}
+	return true;
 }
 
 
@@ -53,7 +96,7 @@ PopGame.prototype.init = function(){
 PopGame.prototype.cellAt = function(x,y){
 	if(x < 0 || this.xs <= x || y < 0 || this.ys <= y || this.cells.length <= x * this.ys + y)
 		return new PopGame.Cell(0);
-	return this.cells[x * this.ys + y];
+	return this.cells[Math.floor(x) * this.ys + Math.floor(y)];
 }
 
 PopGame.prototype.isFlat = function(x,y){
@@ -102,6 +145,8 @@ PopGame.prototype.onUpdateCell = function(cell,x,y){}
 
 PopGame.prototype.onUpdateUnit = function(unit){}
 
+PopGame.prototype.onDeleteUnit = function(unit){}
+
 PopGame.prototype.update = function(deltaTime){
 	if(this.pause)
 		return;
@@ -111,7 +156,7 @@ PopGame.prototype.update = function(deltaTime){
 	// Repeat the frame procedure in constant interval.
 	while(frameTime < this.time){
 
-		this.updateInternal(deltaTime);
+		this.updateInternal(frameTime);
 
 		this.time -= frameTime;
 		this.frameCount++;
@@ -133,9 +178,6 @@ PopGame.prototype.raiseTerrain = function(x,y,delta){
 }
 
 PopGame.prototype.levelModify = function(x,y){
-	function clamp(s, ma, mi){
-		return s < mi ? mi : ma < s ? ma : s;
-	}
 	function levelModifyInt(x0, y0, x, y){
 		var c = this.cellAt(x, y);
 		var h0 = this.cellAt(x0, y0).height;
@@ -172,6 +214,106 @@ PopGame.prototype.levelModify = function(x,y){
 	return ret;
 }
 
+PopGame.prototype.updateHouse = function(x, y){
+	var cell = this.cellAt(x,y);
+	if(cell.type === "house"){
+		if(this.isFlat(x, y)){
+			var farms = this.adjacentFarms(x, y);
+			var team = cell.team;
+			cell.farms = farms;
+
+			var scope = this;
+			/* if the area is flat enough, upgrade the house to castles */
+			if(farms <= 8){
+				this.forAdjacents(x, y, this.xs-2, this.ys-2, 1 * 2, function(x0,y0){
+					return scope.setFarm(x0,y0,1,x,y)});
+//				ForAdjacents(x0, y0, mp->xs-2, mp->ys-2, 6 * 2, VUpdateHouseFarm, pg);
+			}
+/*			else if(farms <= 24){
+				ForAdjacents(x0, y0, mp->xs-2, mp->ys-2, 2 * 2, VSetFarm, pg, 1, (int)team, x0, y0);
+			}
+			else{
+				ForAdjacents(x0, y0, mp->xs-2, mp->ys-2, 3 * 2, VSetFarm, pg, 1, (int)team, x0, y0);
+			}*/
+		}
+		else{
+//			MoveOutHouse(pg, x0, y0);
+		}
+	}
+}
+
+PopGame.prototype.adjacentFarms = function(x, y){
+	var ret = 0;
+	var rad = 1, edge;
+	for(var xx = Math.max(x-1, 0); xx <= Math.min(x+1, this.xs-2); xx++){
+		for(var yy = Math.max(y-1, 0); yy <= Math.min(y+1, this.ys-2); yy++){
+			if(xx != x || yy != y){
+				if(this.isFlat(xx, yy) && !(this.cellAt(xx, yy).type))
+					ret++;
+			}
+		}
+	}
+	if(ret == 8){
+		for(var xx = Math.max(x-2, 0); xx <= Math.min(x+2, this.xs-2); xx++){
+			for(var yy = Math.max(y-2, 0); yy <= Math.min(y+2, this.ys-2); yy++){
+				if(xx < x-1 || x+1 < xx || yy < y-1 || y+1 < yy){
+					if(this.isFlat(xx, yy) && !(this.cellAt(xx, yy).type))
+						ret++;
+				}
+			}
+		}
+	}
+	if(24 <= ret){
+		for(var xx = Math.max(x-3, 0); xx <= Math.min(x+3, this.xs-2); xx++){
+			for(var yy = Math.max(y-3, 0); yy <= Math.min(y+3, this.ys-2); yy++){
+				if(xx < x-2 || x+2 < xx || yy < y-2 || y+2 < yy){
+					if(this.isFlat(xx, yy) && !(this.cellAt(xx, yy).type))
+						ret++;
+				}
+			}
+		}
+	}
+	return ret;
+}
+
+PopGame.prototype.forAdjacents = function(x0,y0,mx,my,rad,proc){
+	for(var x = Math.max(x0-rad/2, 0); x <= Math.min(x0+(rad+1)/2, mx); x++){
+		for(var y = Math.max(y0-rad/2, 0); y <= Math.min(y0+(rad+1)/2, my); y++){
+			/*if(x != x0 || y != y0)*/{
+				ret = proc(x, y);
+				if(!ret)
+					return 0;
+			}
+		}
+	}
+	return 1;
+}
+
+PopGame.prototype.setFarm = function(x,y,team,x0,y0){
+	var cell = this.cellAt(x, y);
+
+	/* dont move yourself out */
+	if(x == x0 && y == y0)
+		return 1;
+
+	/* burned land cannot be yours. */
+//	if(cell.flags & FBURNED)
+//		return 1;
+
+	/* if there's a house in a castle's farms, move it out.
+	  note that another castle can never get moved out. */
+	if(cell.type === "house"){
+//		MoveOutHouse(pg, x, y);
+	}
+
+	/* set farm bits */
+	cell.type = "farm";
+//	SET_TEAM(pt, team);
+	return 1;
+}
+
+
+
 /// Simple random number generator.
 function RandomSequence(seed){
 	this.z = (seed & 0xffffffff) + 0x7fffffff;
@@ -204,14 +346,22 @@ PopGame.prototype.updateInternal = function(dt){
 	for(var x = 0; x < this.xs; x++){
 		for(var y = 0; y < this.ys; y++){
 			var cell = this.cellAt(x, y);
+			cell.update(this, x, y, dt);
 
 			this.onUpdateCell(cell,x,y);
 		}
 	}
 
-	for(var i = 0; i < this.units.length; i++){
-		this.units[i].update(dt);
-		this.onUpdateUnit(this.units[i]);
+	for(var i = 0; i < this.units.length;){
+		var u = this.units[i];
+		if(!u.update(dt)){
+			this.units.splice(i, 1);
+			this.onDeleteUnit(u);
+		}
+		else{
+			this.onUpdateUnit(u);
+			i++;
+		}
 	}
 }
 

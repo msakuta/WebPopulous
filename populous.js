@@ -62,8 +62,8 @@ function init(){
 
 	groundBaseTexture = new createjs.SpriteSheet({
 		images: ["assets/grass.png"],
-		frames: {width: 32, height: 32, regX: 16, regY: 16},
-		animations: {ocean: [15,18,"ocean",0.1]},
+		frames: {width: 32, height: 48, regX: 16, regY: 32},
+		animations: {ocean: [15,18,"ocean",0.1], house: [19]},
 	});
 
 	manTexture = new createjs.SpriteSheet({
@@ -140,6 +140,11 @@ function init(){
 
 //	game.onUpdateUnit = {};
 
+	game.onDeleteUnit = function(u){
+		if(u.graphic)
+			u.graphic.parent.removeChild(u.graphic);
+	};
+
 	var cursorSpriteSheet = new createjs.SpriteSheet({
 		images: ["assets/cursor.png"],
 		frames: {width: 8, height: 8, regX: 4, regY: 4},
@@ -201,8 +206,18 @@ function init(){
 			gx = x + vporg[0];
 			gy = y + vporg[1];
 			var sid = game.slopeID(gx, gy);
-			if(sid === 0 && game.cellAt(gx, gy).height === 0)
+			var cell = game.cellAt(gx, gy);
+			if(sid === 0 && cell.height === 0)
 				vp(x,y).gotoAndStop(oceanFrame);
+			else if(sid === 0 && cell.type === "house"){
+				var farms = cell.farms;
+				var hi = farms < 8 ? farms / 2 : farms < 24 ? 4 : 5;
+				vp(x,y).gotoAndStop(19 + hi);
+			}
+			else if(sid === 0 && cell.type === "farm"){
+				// Filters don't work well for coloring farms
+				vp(x,y).gotoAndStop(25);
+			}
 			else
 				vp(x,y).gotoAndStop(sid);
 			var pos = calcPos(x, y);

@@ -24,8 +24,8 @@ PopGame.Cell = function(height){
 
 PopGame.Cell.prototype.update = function(game,x,y,dt){
 	if(this.type === "house"){
-		this.amount = clamp(this.amount * (1. + dt / 100000), this.getMaxAmount(), 0);
-		if(this.getMaxAmount() / 2. < this.amount){
+		this.amount = clamp(this.amount * (1. + dt / 50000), this.getMaxAmount(), 0);
+		if(this.getMaxAmount() === this.amount){
 			game.units.push(new PopGame.Unit(game, x, y, this.amount / 2.));
 			this.amount /= 2.;
 		}

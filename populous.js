@@ -66,6 +66,12 @@ function init(){
 		animations: {ocean: [15,18,"ocean",0.1], house: [19]},
 	});
 
+	var flagTexture = new createjs.SpriteSheet({
+		images: ["assets/flag.png"],
+		frames: {width: 8, height: 8, regX: 0, regY: 8},
+		animations: {flow: [0,3,"flow",0.1]},
+	});
+
 	manTexture = new createjs.SpriteSheet({
 		images: ["assets/man.png"],
 		frames: {width: 32, height: 32, regX: 16, regY: 48},
@@ -201,6 +207,7 @@ function init(){
 		game.update(deltaTime);
 		
 		var oceanFrame = 15 + Math.floor(timestamp / 500 % 4);
+		var flagFrame = Math.floor(timestamp / 200 % 4);
 
 		for(var x = 0; x < vpw; x++) for(var y = 0; y < vph; y++){
 			gx = x + vporg[0];
@@ -213,6 +220,13 @@ function init(){
 				var farms = cell.farms;
 				var hi = farms < 8 ? farms / 2 : farms < 24 ? 4 : 5;
 				vp(x,y).gotoAndStop(19 + hi);
+				if(!vp(x,y).flag){
+					vp(x,y).flag = new createjs.Sprite(flagTexture, 0);
+					terrain.addChild(vp(x,y).flag);
+				}
+				vp(x,y).flag.gotoAndStop(flagFrame);
+				vp(x,y).flag.x = vp(x,y).x + 8;
+				vp(x,y).flag.y = vp(x,y).y - cell.amount * 32 / cell.getMaxAmount() + 16;
 			}
 			else if(sid === 0 && cell.type === "farm"){
 				// Filters don't work well for coloring farms
@@ -220,6 +234,10 @@ function init(){
 			}
 			else
 				vp(x,y).gotoAndStop(sid);
+			if(cell.type !== "house" && vp(x,y).flag){
+				terrain.removeChild(vp(x,y).flag);
+				vp(x,y).flag = undefined;
+			}
 			var pos = calcPos(x, y);
 			vp(x,y).y = pos[1] - (sid & 1 ? 8 : 16);
 		}

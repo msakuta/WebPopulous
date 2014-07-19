@@ -45,6 +45,7 @@ function init(){
 	groundBaseTexture = new createjs.SpriteSheet({
 		images: ["assets/grass.png"],
 		frames: {width: 32, height: 32, regX: 16, regY: 16},
+		animations: {ocean: [15,18,"ocean",0.1]},
 	});
 
 	var groundTexture = new createjs.Sprite(groundBaseTexture, 0);
@@ -159,13 +160,15 @@ function init(){
 		lastTime = timestamp;
 
 		game.update(deltaTime);
+		
+		var oceanFrame = 15 + Math.floor(timestamp / 500 % 4);
 
 		for(var x = 0; x < vpw; x++) for(var y = 0; y < vph; y++){
 			gx = x + vporg[0];
 			gy = y + vporg[1];
 			var sid = game.slopeID(gx, gy);
 			if(sid === 0 && game.cellAt(gx, gy).height === 0)
-				vp(x,y).gotoAndStop(15);
+				vp(x,y).gotoAndStop(oceanFrame);
 			else
 				vp(x,y).gotoAndStop(sid);
 			var pos = calcPos(x, y);

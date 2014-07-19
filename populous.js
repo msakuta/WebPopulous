@@ -1,4 +1,5 @@
 
+var canvas;
 var width;
 var height;
 var stage;
@@ -12,11 +13,11 @@ var vporg = [0, 0];
 var vpw = 20, vph = 20; // Viewport sizes
 
 window.onload = function(){
-	var canvas = document.getElementById("stage");
+	canvas = document.getElementById("stage");
 	width = parseInt(canvas.style.width);
 	height = parseInt(canvas.style.height);
 
-	stage = new createjs.Stage("stage");
+	stage = new createjs.Stage(canvas);
 	stage.enableMouseOver();
 
 	stage.on("mouseover", function(evt){
@@ -63,6 +64,32 @@ function init(){
 	}
 	stage.addChild(terrain);
 
+	// Plainly filled minimap
+	var minimap = new createjs.Shape();
+	minimap.graphics.beginFill("#00ff00").drawRect(0, 0, game.xs, game.ys);
+	minimap.x = 20;
+	minimap.y = 20;
+	stage.addChild(minimap);
+
+	// Viewport indicator
+	var minimapVP = new createjs.Shape();
+	minimapVP.graphics.setStrokeStyle(2,"round").beginStroke("#ffffff").drawRect(0, 0, vpw, vph);
+	minimapVP.x = 20;
+	minimapVP.y = 20;
+	stage.addChild(minimapVP);
+
+	// Having rectangle graphics for every cell in the game is so slow!
+/*	var mmcells = Array(game.xs * game.ys);
+	var minimap = new createjs.Container();
+	for(var x = 0; x < game.xs/2; x++) for(var y = 0; y < game.ys/2; y++){
+		var cell = mmcells[x * game.ys + y] = new createjs.Shape();
+		cell.x = x + 20;
+		cell.y = y + 20;
+		cell.graphics.beginFill("#00ff00").drawRect(0, 0, 1, 1);
+		minimap.addChild(cell);
+	}
+	stage.addChild(minimap);*/
+
 	game.onUpdateCell = function(cell,x,y){
 	}
 
@@ -105,7 +132,27 @@ function init(){
 		document.getElementById("poslabel").value = "" + cursorPos[0] + ", " + cursorPos[1]
 			+ ", " + pos[0] + ", " + pos[1] + ", " + game.cellAt(cursorPos[0], cursorPos[1]).height;
 
+		minimapVP.x = 20 + vporg[0];
+		minimapVP.y = 20 + vporg[1];
+
 		stage.update();
+
+		// Drawing minimap pixels by pixel is so slow
+/*		var context = canvas.getContext("2d");
+		var image = context.getImageData(20, 20, game.xs, game.ys);
+
+		var pixels = game.xs * game.ys;
+		var imageData = image.data; // here we detach the pixels array from DOM
+		for(var x = 0; x < game.xs; x++) for(var y = 0; y < game.ys; y++){
+			var pixels = x * game.ys + y;
+			var sid = game.slopeID(x, y);
+		   imageData[4*pixels+0] = 0; // Red value
+		   imageData[4*pixels+1] = sid & 1 ? 127 : 255; // Green value
+		   imageData[4*pixels+2] = 0; // Blue value
+		   imageData[4*pixels+3] = 255; // Alpha value
+		}
+		image.data = imageData; // And here we attache it back (not needed cf. update)
+		context.putImageData(image, 20, 20);*/
 
 		requestAnimationFrame(animate);
 	}

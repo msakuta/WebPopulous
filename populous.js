@@ -106,7 +106,8 @@ function init(){
 		var pixels = game.xs * game.ys;
 		var imageData = image.data; // here we detach the pixels array from DOM
 		var land = [0, 127, 0],
-		    left = [0, 159, 0], right = [0, 91, 0], up = [0, 191, 0], down = [0, 63, 0];
+		    left = [0, 159, 0], right = [0, 91, 0], up = [0, 191, 0], down = [0, 63, 0],
+		    ocean = [14,39,214];
 		var cols = [
 			land, down, left, down,
 			right, down, right, down,
@@ -116,7 +117,7 @@ function init(){
 		for(var y = y0; y < y0 + ys; y++) for(var x = 0; x < game.xs; x++){
 			var pixels = (y - y0) * game.xs + x;
 			var sid = game.slopeID(x, y);
-			var col = cols[sid];
+			var col = sid === 0 && game.cellAt(x, y).height === 0 ? ocean : cols[sid];
 			imageData[4*pixels+0] = col[0]; // Red value
 			imageData[4*pixels+1] = col[1]; // Green value
 			imageData[4*pixels+2] = col[2]; // Blue value
@@ -140,7 +141,10 @@ function init(){
 			gx = x + vporg[0];
 			gy = y + vporg[1];
 			var sid = game.slopeID(gx, gy);
-			vp(x,y).gotoAndStop(sid);
+			if(sid === 0 && game.cellAt(gx, gy).height === 0)
+				vp(x,y).gotoAndStop(15);
+			else
+				vp(x,y).gotoAndStop(sid);
 			var pos = calcPos(x, y);
 			vp(x,y).y = pos[1] - (sid & 1 ? 8 : 16);
 		}

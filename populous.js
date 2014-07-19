@@ -7,6 +7,10 @@ var cursorPos = [0, 0];
 
 var cursorSprite;
 
+// Viewport origin
+var vporg = [0, 0];
+var vpw = 20, vph = 20; // Viewport sizes
+
 window.onload = function(){
 	var canvas = document.getElementById("stage");
 	width = parseInt(canvas.style.width);
@@ -27,12 +31,12 @@ var groundBaseTexture;
 
 function init(){
 	function calcPos(x,y){
-		var cell = game.cellAt(x, y);
+		var cell = game.cellAt(x + vporg[0], y + vporg[1]);
 		return [width / 2 + x * 16 - y * 16,
 			height - 16 * 20 + x * 8 + y * 8 - cell.height * 8];
 	}
 
-	game = new PopGame(20, 20);
+	game = new PopGame(100, 100);
 
 	groundBaseTexture = new createjs.SpriteSheet({
 		images: ["assets/grass.png"],
@@ -46,22 +50,20 @@ function init(){
 
 	game.init();
 
-	game.onUpdateCell = function(cell,x,y){
-		if(cell.graphics == undefined){
-			cell.graphics = new createjs.Container();
-
-			ground.addChild(cell.graphics);
-		}
-		if(cell.gs == undefined){
-			var groundSprite = groundTexture.clone();
-			cell.graphics.addChild(groundSprite);
-			cell.gs = groundSprite;
-		}
-		var sid = this.slopeID(x, y);
-		cell.gs.gotoAndStop(/*this.isFlat(x, y) ? 0 : */sid);
+	// Allocate viewport sprites
+	var vpcells = Array(vpw * vph);
+	function vp(x,y){return vpcells[x * vph + y];}
+	var terrain = new createjs.Container();
+	for(var x = 0; x < vpw; x++) for(var y = 0; y< vph; y++){
+		var cell = vpcells[x * vph + y] = groundTexture.clone();
 		var pos = calcPos(x, y);
-		cell.gs.x = pos[0];
-		cell.gs.y = pos[1] - (sid & 1 ? 8 : 16);
+		cell.x = pos[0];
+		cell.y = pos[1];
+		terrain.addChild(cell);
+	}
+	stage.addChild(terrain);
+
+	game.onUpdateCell = function(cell,x,y){
 	}
 
 	var cursorSpriteSheet = new createjs.SpriteSheet({
@@ -89,7 +91,15 @@ function init(){
 
 		game.update(deltaTime);
 
-		var pos = calcPos(cursorPos[0], cursorPos[1]);
+		for(var x = 0; x < vpw; x++) for(var y = 0; y < vph; y++){
+			gx = x + vporg[0];
+			gy = y + vporg[1];
+			var sid = game.slopeID(gx, gy);
+			vp(x,y).gotoAndStop(sid);
+			var pos = calcPos(x, y);
+			vp(x,y).y = pos[1] - (sid & 1 ? 8 : 16);
+		}
+		var pos = calcPos(cursorPos[0] - vporg[0], cursorPos[1] - vporg[1]);
 		cursorSprite.x = pos[0];
 		cursorSprite.y = pos[1] - 16;
 		document.getElementById("poslabel").value = "" + cursorPos[0] + ", " + cursorPos[1]
@@ -119,21 +129,37 @@ document.onkeydown = function(event){
 		game.pause = !game.pause;
 	}
 	else if(event.keyCode == 65){ // 'a'
-		cursorPos[0]--;
+		if(0 < cursorPos[0]){
+			cursorPos[0]--;
+			if(cursorPos[0] < vporg[0])
+				vporg[0] = cursorPos[0];
+		}
 	}
 	else if(event.keyCode == 68){ // 'd'
-		cursorPos[0]++;
+		if(cursorPos[0] < game.xs-1){
+			cursorPos[0]++;
+			if(vporg[0] <= cursorPos[0] - vpw)
+				vporg[0] = cursorPos[0] - vpw;
+		}
 	}
 	else if(event.keyCode == 87){ // 'w'
-		cursorPos[1]--;
+		if(0 < cursorPos[1]){
+			cursorPos[1]--;
+			if(cursorPos[1] < vporg[1])
+				vporg[1] = cursorPos[1];
+		}
 	}
 	else if(event.keyCode == 83){ // 's'
-		cursorPos[1]++;
+		if(cursorPos[1] < game.ys-1){
+			cursorPos[1]++;
+			if(vporg[1] <= cursorPos[1] - vph)
+				vporg[1] = cursorPos[1] - vph;
+		}
 	}
 	else if(event.keyCode == 81){ // 'q'
-		console.log("raised const: " + game.raiseTerrain(cursorPos[0], cursorPos[1], 1));
+		console.log("raised cost: " + game.raiseTerrain(cursorPos[0], cursorPos[1], 1));
 	}
 	else if(event.keyCode == 90){ // 'z'
-		console.log("lowered const: " + game.raiseTerrain(cursorPos[0], cursorPos[1], -1));
+		console.log("lowered cost: " + game.raiseTerrain(cursorPos[0], cursorPos[1], -1));
 	}
 }

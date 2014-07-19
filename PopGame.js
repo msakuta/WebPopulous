@@ -4,6 +4,16 @@ function clamp(s, ma, mi){
 	return s < mi ? mi : ma < s ? ma : s;
 }
 
+function veclen(v){
+	return Math.sqrt(v[0]*v[0] + v[1]*v[1]);
+}
+
+function vecnorm(v){
+	var len = veclen(v);
+	return [v[0] / len, v[1] / len];
+}
+
+
 function PopGame(xs,ys){
 	this.xs = xs;
 	this.ys = ys;
@@ -11,7 +21,7 @@ function PopGame(xs,ys){
 
 	this.cells = Array(xs * ys);
 
-	this.units = [new PopGame.Unit(this,4,5)];
+	this.units = [new PopGame.Unit(this,4,5,500), new PopGame.Unit(this,5,5,500)];
 
 	this.pause = false;
 	this.time = 0;
@@ -44,15 +54,13 @@ PopGame.Unit = function(game,x,y,health=100){
 	this.health = health;
 	this.x = x;
 	this.y = y;
+	this.dst = null;
 }
 
 PopGame.Unit.prototype.update = function(dt){
-	this.x += dt / 1000. * (this.game.rng.next() - 0.5);
-	this.y += dt / 1000. * (this.game.rng.next() - 0.5);
-
 	// environment damage
 	var v = this.health < 500 ? 5 : this.health / 100;
-	this.health -= v / 16 * dt / 1000;
+	this.health -= v * dt / 1000;
 	if(this.health <= 0){
 //		pu->active = 0;
 //		pg->pl[pu->team].starveds++;
@@ -61,8 +69,47 @@ PopGame.Unit.prototype.update = function(dt){
 	}
 
 	var ix = Math.floor(this.x), iy = Math.floor(this.y);
+
+	// If we have destination set, approach there.
+	if(this.dst){
+		// We have reached our destination.
+		if(ix === this.dst[0] && iy === this.dst[1])
+			this.dst = null;
+		else{
+			var n = vecnorm([this.dst[0] - this.x, this.dst[1] - this.y]);
+			this.x += n[0] * dt / 1000;
+			this.y += n[1] * dt / 1000;
+		}
+	}
+	else{
+		// Find suitable place to build a new house.
+		var vacancy = null;
+		var scope = this;
+		var game = this.game;
+		var best = 10 * 10;
+		this.game.forAdjacents(ix, iy, this.game.xs-2, this.game.ys-2, 3 * 2,
+			function(x,y){
+				var cell = game.cellAt(x,y);
+				if(game.isFlat(x,y) && 0 < cell.height && !cell.type){
+					var dist = veclen([scope.x - x, scope.y - y]);
+					if(dist < best){
+						best = dist;
+						vacancy = [x,y];
+					}
+				}
+				return true;
+			});
+		if(vacancy)
+			this.dst = vacancy;
+		else{
+			// If we have nowhere to go, randomly walk around.
+			this.x += dt / 1000. * (this.game.rng.next() - 0.5);
+			this.y += dt / 1000. * (this.game.rng.next() - 0.5);
+		}
+	}
+
 	var cell = this.game.cellAt(ix, iy);
-	if(this.game.slopeID(ix, iy) === 0 && !cell.type){
+	if(this.game.isFlat(ix, iy) && 0 < cell.height && !cell.type){
 		cell.type = "house";
 		cell.amount = this.health;
 		this.game.updateHouse(ix, iy);
@@ -101,12 +148,12 @@ PopGame.prototype.cellAt = function(x,y){
 
 PopGame.prototype.isFlat = function(x,y){
 	var c = this.cellAt(x, y);
-	var cl = this.cellAt(x-1, y);
-//	var cr = this.cellAt(x+1, y);
-	var cu = this.cellAt(x, y-1);
-//	var cd = this.cellAt(x, y+1);
-	return cl && cl.height === c.height /*&& cr && cr.height === c.height*/
-		&& cu && cu.height === c.height /*&& cd && cd.height === c.height*/;
+	var cr = this.cellAt(x+1, y);
+	var cd = this.cellAt(x, y+1);
+	var crd = this.cellAt(x+1, y+1);
+	return cr && cr.height === c.height
+		&& cd && cd.height === c.height
+		&& crd && crd.height === c.height;
 }
 
 /* Bit index

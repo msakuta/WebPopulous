@@ -58,6 +58,18 @@ PopGame.Unit = function(game,x,y,health=100){
 }
 
 PopGame.Unit.prototype.update = function(dt){
+
+	var ix = Math.floor(this.x), iy = Math.floor(this.y);
+
+	// Merge two units if they get close enough to each other.
+	for(var i = 0; i < this.game.units.length; i++){
+		var u = this.game.units[i];
+		if(u !== this && Math.floor(u.x) === ix && Math.floor(u.y) === iy){
+			u.health += this.health;
+			return false;
+		}
+	}
+
 	// environment damage
 	var v = this.health < 500 ? 5 : this.health / 100;
 	this.health -= v * dt / 1000;
@@ -67,8 +79,6 @@ PopGame.Unit.prototype.update = function(dt){
 //		g_logdata.players[pu->team].starveds++;
 		return false;
 	}
-
-	var ix = Math.floor(this.x), iy = Math.floor(this.y);
 
 	// If we have destination set, approach there.
 	if(this.dst){

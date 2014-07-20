@@ -88,7 +88,7 @@ PopGame.Unit.prototype.update = function(dt){
 		if(ix === this.dst[0] && iy === this.dst[1])
 			this.dst = null;
 		else{
-			var n = vecnorm([this.dst[0] - this.x, this.dst[1] - this.y]);
+			var n = vecnorm([this.dst[0] + 0.5 - this.x, this.dst[1] + 0.5 - this.y]);
 			this.x += n[0] * dt / 1000;
 			this.y += n[1] * dt / 1000;
 		}
@@ -115,8 +115,8 @@ PopGame.Unit.prototype.update = function(dt){
 			this.dst = vacancy;
 		else{
 			// If we have nowhere to go, randomly walk around.
-			this.x += dt / 1000. * (this.game.rng.next() - 0.5);
-			this.y += dt / 1000. * (this.game.rng.next() - 0.5);
+			this.dst = [Math.floor(this.x + 2 * (this.game.rng.next() - 0.5)),
+						Math.floor(this.y + 2 * (this.game.rng.next() - 0.5))];
 		}
 	}
 

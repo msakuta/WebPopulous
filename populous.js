@@ -40,11 +40,6 @@ window.onload = function(){
 	stage = new createjs.Stage(canvas);
 	stage.enableMouseOver();
 
-	stage.on("mouseover", function(evt){
-		cursorSprite.x = evt.stageX;
-		cursorSprite.y = evt.stageY;
-	});
-
 	init();
 }
 
@@ -57,6 +52,27 @@ function init(){
 		return [width / 2 + x * 16 - y * 16,
 			height - 16 * 20 + x * 8 + y * 8 - cell.height * 8];
 	}
+
+	function clientToLogical(apos){
+		var pos = [apos[0], apos[1]];
+		pos[0] -= width / 2;
+		pos[1] -= height - 16 * 20 - 16;
+		var ret = [
+			Math.floor((pos[0] / 2 + pos[1]) / 16 + vporg[0]),
+			Math.floor((pos[1] - pos[0] / 2) / 16 + vporg[1])
+		];
+		if(ret[0] < vporg[0]) ret[0] = vporg[0];
+		else if(vporg[0] + vpw <= ret[0]) ret[0] = vporg[0] + vpw;
+		if(ret[1] < vporg[1]) ret[1] = vporg[1];
+		else if(vporg[1] + vph <= ret[1]) ret[1] = vporg[1] + vph;
+		return ret;
+	}
+
+	// Cursor position update by mouse position
+	stage.on("stagemousemove", function(evt){
+		var pos = clientToLogical([evt.stageX, evt.stageY]);
+		cursorPos = pos;
+	});
 
 	game = new PopGame(100, 100);
 
@@ -84,11 +100,26 @@ function init(){
 	});
 
 	var groundTexture = new createjs.Sprite(groundBaseTexture, 0);
+	groundTexture.mouseEnabled = false;
 
 	var ground = new createjs.Container();
 	stage.addChild(ground);
 
 	game.init();
+
+	// Hit shape for the terrain
+	var cursorHitShape = new createjs.Shape();
+	cursorHitShape.graphics.beginFill("#fff");
+	var polys = [[-3,-3],[vpw-3,-3],[vpw,0],[vpw,vph],[0,vph],[-3,vph-3]];
+	for(var i = 0; i < polys.length; i++){
+		var pos = calcPos(polys[i][0],polys[i][1]);
+		cursorHitShape.graphics.lt(pos[0],pos[1]-16);
+	}
+	cursorHitShape.on("mousedown", function(evt){
+		var delta = evt.nativeEvent.button === 2 ? -1 : 1;
+		console.log("raised cost: " + game.raiseTerrain(cursorPos[0], cursorPos[1], delta));
+	});
+	stage.addChild(cursorHitShape);
 
 	// Allocate viewport sprites
 	var vpcells = Array(vpw * vph);
@@ -101,16 +132,8 @@ function init(){
 		cell.y = pos[1];
 		cell.gamex = x; // Remember its position for events
 		cell.gamey = y;
-		cell.on("mouseover", function(evt){
-			cursorPos[0] = evt.currentTarget.gamex + vporg[0];
-			cursorPos[1] = evt.currentTarget.gamey + vporg[1];
-		});
 		terrain.addChild(cell);
 	}
-	stage.on("mousedown", function(evt){
-		var delta = evt.nativeEvent.button === 2 ? -1 : 1;
-		console.log("raised cost: " + game.raiseTerrain(cursorPos[0], cursorPos[1], delta));
-	});
 	stage.addChild(terrain);
 
 	// Placeholder bitmap for procedurally generated minimap

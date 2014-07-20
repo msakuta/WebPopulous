@@ -34,8 +34,8 @@ PopGame.Cell = function(height){
 
 PopGame.Cell.prototype.update = function(game,x,y,dt){
 	if(this.type === "house"){
-		this.amount = clamp(this.amount * (1. + dt / 50000), this.getMaxAmount(), 0);
-		if(this.getMaxAmount() === this.amount){
+		this.amount = clamp(this.amount + this.getGrowth() * dt / 1000, this.getCapacity(), 0);
+		if(this.getCapacity() === this.amount){
 			game.units.push(new PopGame.Unit(game, x, y, this.amount / 2.));
 			this.amount /= 2.;
 		}
@@ -43,10 +43,12 @@ PopGame.Cell.prototype.update = function(game,x,y,dt){
 }
 
 PopGame.Cell.prototype.getGrowth = function(){
+	return this.getCapacity() / 25;
 }
 
-PopGame.Cell.prototype.getMaxAmount = function(){
-	return 1000;
+PopGame.Cell.prototype.getCapacity = function(){
+	var farms = this.farms;
+	return 48 == farms ? 4500 : 24 < farms ? 100 * farms - 650 : 8 < farms ? 75 * farms + 50 : 50 * (farms + 3);
 }
 
 PopGame.Unit = function(game,x,y,health){

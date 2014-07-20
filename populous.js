@@ -229,7 +229,7 @@ function init(){
 			for(var xx = Math.max(gx-1, 0); xx <= mx; xx++){
 				for(var yy = Math.max(gy-1, 0); yy <= Math.min(gy+1, game.ys-2); yy++){
 					if(game.cellAt(xx, yy).type === "house"
-					   && 8 <= (adjacents = game.adjacentFarms(xx, yy))){
+					   && 8 <= (adjacents = game.cellAt(xx, yy).farms)){
 						dx = gx - xx;
 						dy = gy - yy;
 						break;
@@ -288,7 +288,7 @@ function init(){
 				}
 				vp(x,y).flag.gotoAndStop(flagFrame);
 				vp(x,y).flag.x = vp(x,y).x + 8;
-				vp(x,y).flag.y = vp(x,y).y - cell.amount * 32 / cell.getMaxAmount() + 16;
+				vp(x,y).flag.y = vp(x,y).y - cell.amount * 32 / cell.getCapacity() + 16;
 			}
 			else if(sid === 0 && cell.type === "farm"){
 				// Filters don't work well for coloring farms

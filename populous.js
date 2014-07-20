@@ -126,7 +126,9 @@ function init(){
 	function vp(x,y){return vpcells[x * vph + y];}
 	var terrain = new createjs.Container();
 	for(var x = 0; x < vpw; x++) for(var y = 0; y< vph; y++){
-		var cell = vpcells[x * vph + y] = groundTexture.clone();
+		var cell = vpcells[x * vph + y] = new createjs.Container();
+		cell.sprite = groundTexture.clone();
+		cell.addChild(cell.sprite);
 		var pos = calcPos(x, y);
 		cell.x = pos[0];
 		cell.y = pos[1];
@@ -219,6 +221,43 @@ function init(){
 		context.putImageData(image, 0, y0);
 	}
 
+	function paintWalls(x,y,gx,gy,cell){
+		if(cell.type !== "house" && game.isFlat(gx,gy)){
+			var adjacents = 0;
+			var mx = Math.min(gx+1, game.xs-2);
+			var dx, dy;
+			for(var xx = Math.max(gx-1, 0); xx <= mx; xx++){
+				for(var yy = Math.max(gy-1, 0); yy <= Math.min(gy+1, game.ys-2); yy++){
+					if(game.cellAt(xx, yy).type === "house"
+					   && 8 <= (adjacents = game.adjacentFarms(xx, yy))){
+						dx = gx - xx;
+						dy = gy - yy;
+						break;
+					}
+				}
+			}
+			if(8 < adjacents){
+				if(!vp(x,y).wall){
+					vp(x,y).wall = groundTexture.clone();
+					vp(x,y).addChild(vp(x,y).wall);
+				}
+				var wallIdx = (dx + dy + 4) % 2 === 0 ? 0 : Math.abs(dx) < Math.abs(dy) ? 1 : 2;
+				if(48 <= adjacents)
+					wallIdx += 6;
+				else if(24 < adjacents)
+					wallIdx += 3;
+				vp(x,y).wall.gotoAndStop(27 + wallIdx);
+	//			vp(x,y).wall.x = vp(x,y).x;
+	//			vp(x,y).wall.y = vp(x,y).y;
+				return;
+			}
+		}
+		if(vp(x,y).wall !== undefined){
+			vp(x,y).removeChild(vp(x,y).wall);
+			vp(x,y).wall = undefined;
+		}
+	}
+
 //	createjs.Ticker.addEventListener("tick", animate);
 	function animate(timestamp) {
 		// Calculate the delta-time of this frame for game update process.
@@ -238,11 +277,11 @@ function init(){
 			var sid = game.slopeID(gx, gy);
 			var cell = game.cellAt(gx, gy);
 			if(sid === 0 && cell.height === 0)
-				vp(x,y).gotoAndStop(oceanFrame);
+				vp(x,y).sprite.gotoAndStop(oceanFrame);
 			else if(sid === 0 && cell.type === "house"){
 				var farms = cell.farms;
-				var hi = farms < 8 ? farms / 2 : farms < 24 ? 4 : 5;
-				vp(x,y).gotoAndStop(19 + hi);
+				var hi = farms < 8 ? farms / 2 : farms < 24 ? 4 : farms < 48  ? 5 : 6;
+				vp(x,y).sprite.gotoAndStop(19 + hi);
 				if(!vp(x,y).flag){
 					vp(x,y).flag = new createjs.Sprite(flagTexture, 0);
 					terrain.addChild(vp(x,y).flag);
@@ -253,14 +292,18 @@ function init(){
 			}
 			else if(sid === 0 && cell.type === "farm"){
 				// Filters don't work well for coloring farms
-				vp(x,y).gotoAndStop(25);
+				vp(x,y).sprite.gotoAndStop(26);
 			}
 			else
-				vp(x,y).gotoAndStop(sid);
+				vp(x,y).sprite.gotoAndStop(sid);
+
+			paintWalls(x,y,gx,gy,cell);
+
 			if(cell.type !== "house" && vp(x,y).flag){
 				terrain.removeChild(vp(x,y).flag);
 				vp(x,y).flag = undefined;
 			}
+
 			var pos = calcPos(x, y);
 			vp(x,y).y = pos[1] - (sid & 1 ? 8 : 16);
 		}

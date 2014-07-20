@@ -141,12 +141,25 @@ PopGame.prototype.init = function(){
 			for(var y = 0; y < this.ys; y++){
 				var vx = x - 5;
 				var vy = y - 5;
-				var height = vx * vx + vy * vy < 3 * 3 ? 2 : vx * vx + vy * vy < 5 * 5 ? 1 : 0;
 				var cell = new PopGame.Cell(height);
+				var h = this.rng.nexti() % 16 - 8;
+				h = x == 0 ? h : clamp(h, this.cellAt(x-1, y).height + 1, this.cellAt(x-1, y).height - 1);
+				h = y == 0 ? h : clamp(h, this.cellAt(x, y-1).height + 1, this.cellAt(x, y-1).height - 1);
+				h = x == 0 || this.ys <= y+1 ? h : clamp(h, this.cellAt(x-1, y+1).height + 1, this.cellAt(x-1, y+1).height - 1);
+				h = x == 0 || y == 0 ? h : clamp(h, this.cellAt(x-1, y-1).height + 1, this.cellAt(x-1, y-1).height - 1);
+				cell.height = h;
+				cell.type = undefined;
 
 				this.onUpdateCell(cell,x,y);
 
 				this.cells[x * this.ys + y] = cell;
+			}
+		}
+		for(var x = 0; x < this.xs; x++){
+			for(var y = 0; y < this.ys; y++){
+				var cell = this.cellAt(x, y);
+				if(cell.height < 0)
+					cell.height = 0;
 			}
 		}
 	}

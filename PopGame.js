@@ -49,7 +49,7 @@ PopGame.Cell.prototype.getMaxAmount = function(){
 	return 1000;
 }
 
-PopGame.Unit = function(game,x,y,health=100){
+PopGame.Unit = function(game,x,y,health){
 	this.game = game;
 	this.health = health;
 	this.x = x;
@@ -317,12 +317,11 @@ PopGame.prototype.updateHouseFarm = function(x0, y0){
 }
 
 PopGame.prototype.moveOutHouse = function(x0, y0){
-	var u = new PopGame.Unit(this, x0, y0);
-	this.units.push(u);
 	var c = this.cellAt(x0, y0);
+	var u = new PopGame.Unit(this, x0, y0, c.amount);
+	this.units.push(u);
 
 	if(u){
-		u.health = c.amount;
 //		u.task = tauto;
 //		u.team = c.team;
 //		u.weapon = 0;

@@ -204,7 +204,7 @@ function init(){
 		var deltaTime = timestamp - lastTime;
 		lastTime = timestamp;
 
-		game.update(deltaTime);
+		game.update(Math.min(deltaTime, 1000));
 		
 		var oceanFrame = 15 + Math.floor(timestamp / 500 % 4);
 		var flagFrame = Math.floor(timestamp / 200 % 4);

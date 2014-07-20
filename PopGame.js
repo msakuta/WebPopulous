@@ -267,7 +267,9 @@ PopGame.prototype.levelModify = function(x,y){
 //				TILEAT(pg->map, xx, yy).flags &= ~(FSWAMP | FBURNED | FHOUSE);
 		}
 	}
-//	ForAdjacents(x, y, pg->map->xs-2, pg->map->ys-2, 3 * 2, VUpdateHouse, pg);
+	var scope = this;
+	this.forAdjacents(x, y, this.xs-2, this.ys-2, 3 * 2, function(x,y){
+		scope.updateHouse(x,y); return true;});
 	return ret;
 }
 
@@ -282,21 +284,69 @@ PopGame.prototype.updateHouse = function(x, y){
 			var scope = this;
 			/* if the area is flat enough, upgrade the house to castles */
 			if(farms <= 8){
-				this.forAdjacents(x, y, this.xs-2, this.ys-2, 1 * 2, function(x0,y0){
-					return scope.setFarm(x0,y0,1,x,y)});
-//				ForAdjacents(x0, y0, mp->xs-2, mp->ys-2, 6 * 2, VUpdateHouseFarm, pg);
+				this.forAdjacents(x, y, this.xs-2, this.ys-2, 3 * 2, function(x0,y0){
+					return scope.setFarm(x0,y0,false,1,x,y)});
+				this.forAdjacents(x, y, this.xs-2, this.ys-2, 6 * 2, function(x0,y0){
+					return scope.updateHouseFarm(x0,y0)});
 			}
-/*			else if(farms <= 24){
-				ForAdjacents(x0, y0, mp->xs-2, mp->ys-2, 2 * 2, VSetFarm, pg, 1, (int)team, x0, y0);
+			else if(farms <= 24){
+				this.forAdjacents(x, y, this.xs-2, this.ys-2, 2 * 2, function(x0,y0){
+					return scope.setFarm(x0,y0,true,1,x,y)});
 			}
 			else{
-				ForAdjacents(x0, y0, mp->xs-2, mp->ys-2, 3 * 2, VSetFarm, pg, 1, (int)team, x0, y0);
-			}*/
+				this.forAdjacents(x, y, this.xs-2, this.ys-2, 3 * 2, function(x0,y0){
+					return scope.setFarm(x0,y0,true,1,x,y)});
+			}
 		}
 		else{
-//			MoveOutHouse(pg, x0, y0);
+			this.moveOutHouse(x, y);
 		}
 	}
+}
+
+PopGame.prototype.updateHouseFarm = function(x0, y0){
+	if(this.cellAt(x0, y0).type === "house"){
+		var farms = this.adjacentFarms(x0, y0);
+//		team = GET_TEAM(&TILEAT(mp, x0, y0));
+		var team = 1;
+		var scope = this;
+		this.forAdjacents(x0, y0, this.xs-2, this.ys-2, 2 * (farms <= 8 ? 1 : farms <= 24 ? 2 : 3),
+			function(x,y){ return scope.setFarm(x,y,true,team,x0,y0); });
+	}
+	return 1;
+}
+
+PopGame.prototype.moveOutHouse = function(x0, y0){
+	var u = new PopGame.Unit(this, x0, y0);
+	this.units.push(u);
+	var c = this.cellAt(x0, y0);
+
+	if(u){
+		u.health = c.amount;
+//		u.task = tauto;
+//		u.team = c.team;
+//		u.weapon = 0;
+//		if(this.question == pt)
+//			this.question = pu;
+	}
+
+	c.type = undefined;
+
+	/* and the chain reaction continues */
+	var scope = this;
+	this.forAdjacents(x0, y0, this.xs-2, this.ys-2, 3 * 2, function(x,y){
+		return scope.setFarm(x,y,false,1,x0,y0)});
+	this.forAdjacents(x0, y0, this.xs-2, this.ys-2, 6 * 2, function(x,y){
+		return scope.updateHouseFarm(x,y)});
+}
+
+PopGame.prototype.isFarmable = function(x,y){
+	var type = this.cellAt(x,y).type;
+	if(!type)
+		return true;
+	else if(type === "house")
+		return false;
+	return true;
 }
 
 PopGame.prototype.adjacentFarms = function(x, y){
@@ -305,7 +355,7 @@ PopGame.prototype.adjacentFarms = function(x, y){
 	for(var xx = Math.max(x-1, 0); xx <= Math.min(x+1, this.xs-2); xx++){
 		for(var yy = Math.max(y-1, 0); yy <= Math.min(y+1, this.ys-2); yy++){
 			if(xx != x || yy != y){
-				if(this.isFlat(xx, yy) && !(this.cellAt(xx, yy).type))
+				if(this.isFlat(xx, yy) && this.isFarmable(xx, yy))
 					ret++;
 			}
 		}
@@ -314,7 +364,7 @@ PopGame.prototype.adjacentFarms = function(x, y){
 		for(var xx = Math.max(x-2, 0); xx <= Math.min(x+2, this.xs-2); xx++){
 			for(var yy = Math.max(y-2, 0); yy <= Math.min(y+2, this.ys-2); yy++){
 				if(xx < x-1 || x+1 < xx || yy < y-1 || y+1 < yy){
-					if(this.isFlat(xx, yy) && !(this.cellAt(xx, yy).type))
+					if(this.isFlat(xx, yy) && this.isFarmable(xx, yy))
 						ret++;
 				}
 			}
@@ -324,7 +374,7 @@ PopGame.prototype.adjacentFarms = function(x, y){
 		for(var xx = Math.max(x-3, 0); xx <= Math.min(x+3, this.xs-2); xx++){
 			for(var yy = Math.max(y-3, 0); yy <= Math.min(y+3, this.ys-2); yy++){
 				if(xx < x-2 || x+2 < xx || yy < y-2 || y+2 < yy){
-					if(this.isFlat(xx, yy) && !(this.cellAt(xx, yy).type))
+					if(this.isFlat(xx, yy) && this.isFarmable(xx, yy))
 						ret++;
 				}
 			}
@@ -346,12 +396,20 @@ PopGame.prototype.forAdjacents = function(x0,y0,mx,my,rad,proc){
 	return 1;
 }
 
-PopGame.prototype.setFarm = function(x,y,team,x0,y0){
+PopGame.prototype.setFarm = function(x,y,f,team,x0,y0){
 	var cell = this.cellAt(x, y);
+
+	// Delete farm
+	if(!f){
+		if(cell.type === "house" /*|| cell.type === "burned"*/)
+			return true;
+		cell.type = undefined;
+		return true;
+	}
 
 	/* dont move yourself out */
 	if(x == x0 && y == y0)
-		return 1;
+		return true;
 
 	/* burned land cannot be yours. */
 //	if(cell.flags & FBURNED)
@@ -360,13 +418,13 @@ PopGame.prototype.setFarm = function(x,y,team,x0,y0){
 	/* if there's a house in a castle's farms, move it out.
 	  note that another castle can never get moved out. */
 	if(cell.type === "house"){
-//		MoveOutHouse(pg, x, y);
+		this.moveOutHouse(x, y);
 	}
 
 	/* set farm bits */
 	cell.type = "farm";
 //	SET_TEAM(pt, team);
-	return 1;
+	return true;
 }
 
 
